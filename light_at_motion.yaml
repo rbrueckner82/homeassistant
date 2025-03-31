@@ -2,7 +2,7 @@ blueprint:
   name: Bewegungsmelder Licht Automation
   description: "Schaltet ein Licht oder einen Schalter basierend auf einem Bewegungsmelder ein und aus."
   domain: automation
-  source_url: https://rbr.outerrim.online/public/HomeAssistant/src/branch/main/light_at_motion.yaml
+  source_url: https://github.com/rbrueckner82/homeassistant/blob/main/light_at_motion.yaml
   author: rbr
   input:
     motion_sensor:
