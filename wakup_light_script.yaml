@@ -1,6 +1,6 @@
 blueprint:
   name: Light Sunrise
-  author: steriku
+  author: rbr
   description: >
     Campanion Script to the parabolic alarm automation blueprint.
   source_url: https://github.com/rbrueckner82/homeassistant/blob/main/wakup_light_script.yaml
