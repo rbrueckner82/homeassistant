@@ -1,0 +1,48 @@
+blueprint:
+  name: Bewegungsmelder Licht Automation
+  description: "Schaltet ein Licht oder einen Schalter basierend auf einem Bewegungsmelder ein und aus."
+  domain: automation
+  input:
+    motion_sensor:
+      name: Bewegungsmelder
+      description: Der Bewegungsmelder, der das Licht oder den Schalter steuert.
+      selector:
+        entity:
+          domain: binary_sensor
+    target_device:
+      name: Ziel-Gerät
+      description: Das Licht oder der Schalter, der gesteuert werden soll.
+      selector:
+        entity:
+          domain: light,switch
+    wait_time:
+      name: Ausschalt-Verzögerung
+      description: Die Zeitspanne, die nach der letzten erkannten Bewegung gewartet wird, bevor das Gerät ausgeschaltet wird.
+      default: 60
+      selector:
+        number:
+          min: 10
+          max: 600
+          unit_of_measurement: seconds
+
+mode: restart
+trigger:
+  - platform: state
+    entity_id: !input motion_sensor
+    to: "on"
+
+action:
+  - service: homeassistant.turn_on
+    target:
+      entity_id: !input target_device
+  
+  - wait_for_trigger:
+      - platform: state
+        entity_id: !input motion_sensor
+        to: "off"
+        for:
+          seconds: !input wait_time
+  
+  - service: homeassistant.turn_off
+    target:
+      entity_id: !input target_device
