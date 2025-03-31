@@ -1,6 +1,7 @@
 blueprint:
   name: Wakup Light
   description: Turn a light on based on a start time, whether it is a workday and whether a person is home. This is to match the sunrise and allow for a natural wake up.
+  source_url: https://github.com/rbrueckner82/homeassistant/edit/main/wakup_light.yaml
   domain: automation
   input:
     alarm_start_time:
