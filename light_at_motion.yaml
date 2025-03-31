@@ -16,7 +16,8 @@ blueprint:
       description: Das Licht oder der Schalter, der gesteuert werden soll.
       selector:
         entity:
-          domain: light,switch
+          domain: light
+          domain: switch
     wait_time:
       name: Ausschalt-Verzögerung
       description: Die Zeitspanne, die nach der letzten erkannten Bewegung gewartet wird, bevor das Gerät ausgeschaltet wird.
