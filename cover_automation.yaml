@@ -1,6 +1,7 @@
 blueprint:
   name: Rollos nach Temperatur und Sonnenstand steuern
   description: Schließt Rollos bei hoher Temperatur und Sonnen-Azimut, öffnet bei niedriger Sonnen-Elevation.
+  source_url: https://github.com/rbrueckner82/homeassistant/edit/main/cover_automation.yaml
   domain: automation
   input:
     cover_entity:
