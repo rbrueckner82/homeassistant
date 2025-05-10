@@ -46,13 +46,8 @@ blueprint:
           max: 90
 
 trigger:
-  - platform: state
-    entity_id: !input temperature_entity
-  - platform: numeric_state
-    entity_id: sun.sun
-    attribute: elevation
   - platform: time_pattern
-    minutes: "/5"
+    minutes: "/15"
 
 condition: []
 
