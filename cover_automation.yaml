@@ -1,0 +1,84 @@
+blueprint:
+  name: Rollos nach Temperatur und Sonnenstand steuern
+  description: Schließt Rollos bei hoher Temperatur und Sonnen-Azimut, öffnet bei niedriger Sonnen-Elevation.
+  domain: automation
+  input:
+    cover_entity:
+      name: Rollo
+      selector:
+        entity:
+          domain: cover
+    temperature_entity:
+      name: Temperatursensor
+      selector:
+        entity:
+          domain: sensor
+          device_class: temperature
+    temperature_threshold:
+      name: Temperaturschwelle (°C)
+      default: 25
+      selector:
+        number:
+          min: 0
+          max: 50
+          unit_of_measurement: "°C"
+    azimuth_min:
+      name: Minimaler Azimut (°)
+      default: 90
+      selector:
+        number:
+          min: 0
+          max: 360
+    azimuth_max:
+      name: Maximaler Azimut (°)
+      default: 270
+      selector:
+        number:
+          min: 0
+          max: 360
+    elevation_threshold:
+      name: Elevationsgrenze zum Öffnen (°)
+      default: 5
+      selector:
+        number:
+          min: -90
+          max: 90
+
+trigger:
+  - platform: state
+    entity_id: !input temperature_entity
+  - platform: numeric_state
+    entity_id: sun.sun
+    attribute: elevation
+  - platform: time_pattern
+    minutes: "/5"
+
+condition: []
+
+action:
+  - choose:
+      - conditions:
+          - condition: numeric_state
+            entity_id: !input temperature_entity
+            above: !input temperature_threshold
+          - condition: template
+            value_template: >
+              {% set azimuth = state_attr('sun.sun', 'azimuth') %}
+              {% set min_az = inputs.azimuth_min | float %}
+              {% set max_az = inputs.azimuth_max | float %}
+              {{ azimuth >= min_az and azimuth <= max_az }}
+        sequence:
+          - service: cover.close_cover
+            target:
+              entity_id: !input cover_entity
+      - conditions:
+          - condition: numeric_state
+            entity_id: sun.sun
+            attribute: elevation
+            below: !input elevation_threshold
+        sequence:
+          - service: cover.open_cover
+            target:
+              entity_id: !input cover_entity
+
+mode: single
