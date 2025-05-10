@@ -52,33 +52,50 @@ trigger:
     entity_id: !input motion_sensor
     to: "on"
 
-condition:
-  - condition: or
-    conditions:
-      - condition: template
-        value_template: "{{ not enable_time_condition }}"
-      - condition: and
-        conditions:
-          - condition: time
-            after: !input start_time
-          - condition: time
-            before: !input end_time
+condition: []
 
 action:
-  - service: homeassistant.turn_on
-    target:
-      entity_id: !input target_device
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ enable_time_condition }}"
+          - condition: time
+            after: !input start_time
+            before: !input end_time
+        sequence:
+          - service: homeassistant.turn_on
+            target:
+              entity_id: !input target_device
 
-  - repeat:
-      until:
-        - condition: state
-          entity_id: !input motion_sensor
-          state: "off"
-          for:
-            seconds: !input wait_time
-      sequence:
-        - delay: 5
+          - repeat:
+              until:
+                - condition: state
+                  entity_id: !input motion_sensor
+                  state: "off"
+                  for:
+                    seconds: !input wait_time
+              sequence:
+                - delay: 5
 
-  - service: homeassistant.turn_off
-    target:
-      entity_id: !input target_device
+          - service: homeassistant.turn_off
+            target:
+              entity_id: !input target_device
+
+    default:
+      - service: homeassistant.turn_on
+        target:
+          entity_id: !input target_device
+
+      - repeat:
+          until:
+            - condition: state
+              entity_id: !input motion_sensor
+              state: "off"
+              for:
+                seconds: !input wait_time
+          sequence:
+            - delay: 5
+
+      - service: homeassistant.turn_off
+        target:
+          entity_id: !input target_device
