@@ -2,3 +2,97 @@ blueprint:
   name: Rollos nach Temperatur und Sonnenstand steuern
   description: Schließt Rollos bei hoher Temperatur und Sonnen-Azimut, öffnet bei niedriger Sonnen-Elevation.
   source_url: https://github.com/rbrueckner82/homeassistant/edit/main/cover_automation.yaml
+  domain: automation
+  input:
+    cover_entity:
+      name: Rollo
+      selector:
+        entity:
+          domain: cover
+    temperature_entity:
+      name: Temperatursensor
+      selector:
+        entity:
+          domain: sensor
+          device_class: temperature
+    temperature_threshold:
+      name: Temperaturschwelle (°C)
+      default: 25
+      selector:
+        number:
+          min: 0
+          max: 50
+          unit_of_measurement: "°C"
+    azimuth_target:
+      name: Ziel-Azimut zum Schließen (°)
+      default: 180
+      selector:
+        number:
+          min: 0
+          max: 360
+    azimuth_tolerance:
+      name: Toleranzbereich um Ziel-Azimut (±°)
+      default: 10
+      selector:
+        number:
+          min: 0
+          max: 45
+    elevation_threshold:
+      name: Elevationsgrenze zum Öffnen (°)
+      default: 5
+      selector:
+        number:
+          min: -90
+          max: 90
+    position_closed:
+      name: Rollo-Position bei Schließen (%)
+      default: 100
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+    position_open:
+      name: Rollo-Position bei Öffnen (%)
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+
+trigger:
+  - platform: time_pattern
+    minutes: "/15"
+
+condition: []
+
+action:
+  - choose:
+      - conditions:
+          - condition: numeric_state
+            entity_id: !input temperature_entity
+            above: !input temperature_threshold
+          - condition: template
+            value_template: >
+              {% set azimuth = state_attr('sun.sun', 'azimuth') | float %}
+              {% set target = inputs.azimuth_target | float %}
+              {% set tol = inputs.azimuth_tolerance | float %}
+              {{ azimuth >= (target - tol) and azimuth <= (target + tol) }}
+        sequence:
+          - service: cover.set_cover_position
+            data:
+              entity_id: !input cover_entity
+              position: !input position_closed
+      - conditions:
+          - condition: numeric_state
+            entity_id: sun.sun
+            attribute: elevation
+            below: !input elevation_threshold
+        sequence:
+          - service: cover.set_cover_position
+            data:
+              entity_id: !input cover_entity
+              position: !input position_open
+
+mode: single
