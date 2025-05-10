@@ -23,20 +23,20 @@ blueprint:
           min: 0
           max: 50
           unit_of_measurement: "°C"
-    azimuth_min:
-      name: Minimaler Azimut (°)
-      default: 90
+    azimuth_target:
+      name: Ziel-Azimut zum Schließen (°)
+      default: 180
       selector:
         number:
           min: 0
           max: 360
-    azimuth_max:
-      name: Maximaler Azimut (°)
-      default: 270
+    azimuth_tolerance:
+      name: Toleranzbereich um Ziel-Azimut (±°)
+      default: 10
       selector:
         number:
           min: 0
-          max: 360
+          max: 45
     elevation_threshold:
       name: Elevationsgrenze zum Öffnen (°)
       default: 5
@@ -59,10 +59,10 @@ action:
             above: !input temperature_threshold
           - condition: template
             value_template: >
-              {% set azimuth = state_attr('sun.sun', 'azimuth') %}
-              {% set min_az = inputs.azimuth_min | float %}
-              {% set max_az = inputs.azimuth_max | float %}
-              {{ azimuth >= min_az and azimuth <= max_az }}
+              {% set azimuth = state_attr('sun.sun', 'azimuth') | float %}
+              {% set target = inputs.azimuth_target | float %}
+              {% set tol = inputs.azimuth_tolerance | float %}
+              {{ azimuth >= (target - tol) and azimuth <= (target + tol) }}
         sequence:
           - service: cover.close_cover
             target:
