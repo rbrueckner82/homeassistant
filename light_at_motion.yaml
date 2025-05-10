@@ -61,6 +61,7 @@ condition:
         conditions:
           - condition: time
             after: !input start_time
+          - condition: time
             before: !input end_time
 
 action:
