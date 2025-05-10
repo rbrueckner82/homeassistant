@@ -60,6 +60,11 @@ blueprint:
           min: 0
           max: 100
           unit_of_measurement: "%"
+    last_open_datetime:
+      name: Datum der letzten Öffnung (input_datetime)
+      selector:
+        entity:
+          domain: input_datetime
 
 trigger:
   - platform: time_pattern
@@ -68,8 +73,33 @@ trigger:
 condition: []
 
 action:
+  - variables:
+      today: "{{ now().date() }}"
+      last_opened: "{{ states[inputs.last_open_datetime].state | as_datetime | default(now() - timedelta(days=1)) }}"
+      last_opened_date: "{{ last_opened.date() }}"
+
   - choose:
+      # 🟩 Öffnen bei tiefer Sonnenhöhe
       - conditions:
+          - condition: numeric_state
+            entity_id: sun.sun
+            attribute: elevation
+            below: !input elevation_threshold
+        sequence:
+          - service: cover.set_cover_position
+            data:
+              entity_id: !input cover_entity
+              position: !input position_open
+          - service: input_datetime.set_datetime
+            target:
+              entity_id: !input last_open_datetime
+            data:
+              date: "{{ today }}"
+      
+      # 🟥 Schließen nur, wenn heute noch nicht geöffnet wurde
+      - conditions:
+          - condition: template
+            value_template: "{{ today != last_opened_date }}"
           - condition: numeric_state
             entity_id: !input temperature_entity
             above: !input temperature_threshold
@@ -84,15 +114,5 @@ action:
             data:
               entity_id: !input cover_entity
               position: !input position_closed
-      - conditions:
-          - condition: numeric_state
-            entity_id: sun.sun
-            attribute: elevation
-            below: !input elevation_threshold
-        sequence:
-          - service: cover.set_cover_position
-            data:
-              entity_id: !input cover_entity
-              position: !input position_open
 
 mode: single
