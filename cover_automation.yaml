@@ -2,6 +2,7 @@ blueprint:
   name: Rollos nach Temperatur und Sonnenstand steuern
   description: Schließt Rollos bei hoher Temperatur und Sonnen-Azimut, öffnet bei niedriger Sonnen-Elevation.
   source_url: https://github.com/rbrueckner82/homeassistant/edit/main/cover_automation.yaml
+
   domain: automation
   input:
     cover_entity:
@@ -44,6 +45,22 @@ blueprint:
         number:
           min: -90
           max: 90
+    position_closed:
+      name: Rollo-Position bei Schließen (%)
+      default: 100
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+    position_open:
+      name: Rollo-Position bei Öffnen (%)
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
 
 trigger:
   - platform: time_pattern
@@ -64,17 +81,19 @@ action:
               {% set tol = inputs.azimuth_tolerance | float %}
               {{ azimuth >= (target - tol) and azimuth <= (target + tol) }}
         sequence:
-          - service: cover.close_cover
-            target:
+          - service: cover.set_cover_position
+            data:
               entity_id: !input cover_entity
+              position: !input position_closed
       - conditions:
           - condition: numeric_state
             entity_id: sun.sun
             attribute: elevation
             below: !input elevation_threshold
         sequence:
-          - service: cover.open_cover
-            target:
+          - service: cover.set_cover_position
+            data:
               entity_id: !input cover_entity
+              position: !input position_open
 
 mode: single
