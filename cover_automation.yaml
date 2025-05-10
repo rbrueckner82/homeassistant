@@ -75,11 +75,16 @@ condition: []
 action:
   - variables:
       today: "{{ now().date() }}"
-      last_opened: "{{ states[inputs.last_open_datetime].state | as_datetime | default(now() - timedelta(days=1)) }}"
+      last_open_id: !input last_open_datetime
+      last_opened: "{{ states[last_open_id] | as_datetime(default=now() - timedelta(days=1)) }}"
       last_opened_date: "{{ last_opened.date() }}"
+      azimuth: "{{ state_attr('sun.sun', 'azimuth') | float }}"
+      az_target: !input azimuth_target
+      az_tol: !input azimuth_tolerance
+      azimuth_ok: "{{ azimuth >= (az_target - az_tol) and azimuth <= (az_target + az_tol) }}"
 
   - choose:
-      # 🟩 Öffnen bei tiefer Sonnenhöhe
+      # ✅ Öffnen bei niedriger Elevation
       - conditions:
           - condition: numeric_state
             entity_id: sun.sun
@@ -95,8 +100,8 @@ action:
               entity_id: !input last_open_datetime
             data:
               date: "{{ today }}"
-      
-      # 🟥 Schließen nur, wenn heute noch nicht geöffnet wurde
+
+      # ✅ Schließen nur, wenn heute noch nicht geöffnet wurde + Azimut passt + Temperatur überschritten
       - conditions:
           - condition: template
             value_template: "{{ today != last_opened_date }}"
@@ -104,11 +109,7 @@ action:
             entity_id: !input temperature_entity
             above: !input temperature_threshold
           - condition: template
-            value_template: >
-              {% set azimuth = state_attr('sun.sun', 'azimuth') | float %}
-              {% set target = inputs.azimuth_target | float %}
-              {% set tol = inputs.azimuth_tolerance | float %}
-              {{ azimuth >= (target - tol) and azimuth <= (target + tol) }}
+            value_template: "{{ azimuth_ok }}"
         sequence:
           - service: cover.set_cover_position
             data:
