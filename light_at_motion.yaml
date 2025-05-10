@@ -2,3 +2,101 @@ blueprint:
   name: Bewegungsmelder Licht Automation
   description: "Schaltet ein Licht oder einen Schalter basierend auf einem Bewegungsmelder ein und aus. Mit automatischer Verlängerung bei erneuter Bewegung und optionaler Zeitsteuerung."
   source_url: https://github.com/rbrueckner82/homeassistant/edit/main/light_at_motion.yaml
+  domain: automation
+  input:
+    motion_sensor:
+      name: Bewegungsmelder
+      description: Der Bewegungsmelder, der das Licht oder den Schalter steuert.
+      selector:
+        entity:
+          domain: binary_sensor
+    target_device:
+      name: Ziel-Gerät
+      description: Das Licht oder der Schalter, der gesteuert werden soll.
+      selector:
+        entity:
+          domain: light
+          domain: switch
+    wait_time:
+      name: Ausschalt-Verzögerung
+      description: Die Zeitspanne, die nach der letzten erkannten Bewegung gewartet wird, bevor das Gerät ausgeschaltet wird.
+      default: 60
+      selector:
+        number:
+          min: 10
+          max: 600
+          unit_of_measurement: seconds
+    enable_time_condition:
+      name: Zeitsteuerung aktivieren
+      description: Soll die Automation nur innerhalb eines bestimmten Zeitfensters aktiv sein?
+      default: false
+      selector:
+        boolean:
+    start_time:
+      name: Startzeit
+      description: Ab wann die Automation aktiv sein soll.
+      default: "06:00:00"
+      selector:
+        time:
+    end_time:
+      name: Endzeit
+      description: Bis wann die Automation aktiv sein soll.
+      default: "21:00:00"
+      selector:
+        time:
+
+mode: restart
+
+trigger:
+  - platform: state
+    entity_id: !input motion_sensor
+    to: "on"
+
+condition: []
+
+action:
+  - choose:
+      - conditions:
+          - condition: and
+            conditions:
+              - condition: template
+                value_template: "{{ is_true(enable_time_condition) }}"
+              - condition: time
+                after: !input start_time
+                before: !input end_time
+        sequence:
+          - service: homeassistant.turn_on
+            target:
+              entity_id: !input target_device
+          - repeat:
+              until:
+                - condition: state
+                  entity_id: !input motion_sensor
+                  state: "off"
+                  for:
+                    seconds: !input wait_time
+              sequence:
+                - delay: 5
+          - service: homeassistant.turn_off
+            target:
+              entity_id: !input target_device
+
+      - conditions:
+          - condition: template
+            value_template: "{{ not is_true(enable_time_condition) }}"
+        sequence:
+          - service: homeassistant.turn_on
+            target:
+              entity_id: !input target_device
+          - repeat:
+              until:
+                - condition: state
+                  entity_id: !input motion_sensor
+                  state: "off"
+                  for:
+                    seconds: !input wait_time
+              sequence:
+                - delay: 5
+          - service: homeassistant.turn_off
+            target:
+              entity_id: !input target_device  
