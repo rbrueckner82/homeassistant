@@ -4,99 +4,212 @@ blueprint:
   source_url: https://github.com/rbrueckner82/homeassistant/edit/main/light_at_motion.yaml
   domain: automation
   input:
-    motion_sensor:
-      name: Bewegungsmelder
-      description: Der Bewegungsmelder, der das Licht oder den Schalter steuert.
+    motion_entity:
+      name: Motion Sensor
+      description: Motion Sensor or a group with Motion Sensors (But can be anything switching between "on" and "off")
       selector:
         entity:
-          domain: binary_sensor
-    target_device:
-      name: Ziel-Gerät
-      description: Das Licht oder der Schalter, der gesteuert werden soll.
+          multiple: true
+    light_target:
+      name: Light
+      selector:
+        target:
+          entity:
+            domain: light
+            domain: switch
+    luminance_sensor:
+      name: Illuminance sensor
+      description: This sensor will be used to determine the illumination.
+      default:
       selector:
         entity:
-          domain: light
-          domain: switch
-    wait_time:
-      name: Ausschalt-Verzögerung
-      description: Die Zeitspanne, die nach der letzten erkannten Bewegung gewartet wird, bevor das Gerät ausgeschaltet wird.
-      default: 60
+          domain: sensor
+          device_class: illuminance
+          multiple: false
+    luminance_required:
+      name: Required Lux Level
+      description: Lux level below which the automation will run.
+      default: 100
       selector:
         number:
-          min: 10
-          max: 600
+          min: 0
+          max: 1000
+          unit_of_measurement: lx
+    no_motion_wait:
+      name: Wait time
+      description: Time to leave the light on after last motion is detected.
+      default: 120
+      selector:
+        number:
+          min: 0.0
+          max: 600.0
           unit_of_measurement: seconds
-    enable_time_condition:
-      name: Zeitsteuerung aktivieren
-      description: Soll die Automation nur innerhalb eines bestimmten Zeitfensters aktiv sein?
+          mode: slider
+          step: 1.0
+    time_default_start:
+      name: Only run default action after this time (Optional)
+      description: Default Light target will only run when time is later than this time value.
+      default: 00:00:00
+      selector:
+        time: {}
+    time_default_end:
+      name: Only run default action before this time (Optional)
+      description: Default Light target will only run when time is earlier than this time value.
+      default: 00:00:00
+      selector:
+        time: {}
+    elevation:
+      name: Elevation
+      description: Choose whether to check if the sun is above, below the horizon, or always trigger the action
+      default: Always
+      selector:
+        select:
+          options:
+            - Always
+            - Below horizon
+            - Above horizon
+    elevation_adjustment:
+      name: Sun elevation adjustment (Optional)
+      description: With a postivie number, the sun is further above the horizon. For instance, +10 approximately means the trigger will activate one hour before the sun is below horizon. A negative number moves the trigger further below the horizon.
+      default: 0
+      selector:
+        number:
+          min: -90.0
+          max: 90.0
+          unit_of_measurement: degrees
+          mode: slider
+          step: 1.0
+    automation_blocker:
+      name: Automation Blocker (Optional)
+      description: Only run if this boolean is in desired state (see next input)
+      default:
+      selector:
+        entity: {}
+    automation_blocker_boolean:
+      name: Automation Blocker Chooser (Optional)
+      description:
+        Desired state of automation blocker, choose on for on and off for
+        off
       default: false
       selector:
-        boolean:
-    start_time:
-      name: Startzeit
-      description: Ab wann die Automation aktiv sein soll.
-      default: "06:00:00"
+        boolean: {}
+    motion_off_blocker:
+      name: Motion Off Blocker (Optional)
+      description:
+        Motion off sequence (trigger goes from ON to OFF) is not run if this boolean is in desired state
+        (see next input)
+      default:
       selector:
-        time:
-    end_time:
-      name: Endzeit
-      description: Bis wann die Automation aktiv sein soll.
-      default: "21:00:00"
+        entity: {}
+    motion_off_blocker_boolean:
+      name: Motion Off Chooser (Optional)
+      description: Desired state of motion off blocker
+      default: false
       selector:
-        time:
-
+        boolean: {}
+    scene_ambient:
+      name: Ambient Scene (Optional)
+      description: Scene for ambient state. Will be activated when no motion is detected.
+      default: scene.none
+      selector:
+        entity:
+          domain:
+            - scene
+          multiple: false
+    time_scene_ambient_start:
+      name: Ambient time frame start (Optional)
+      description: Time from which on ambient scene will be activated
+      default: 00:00:00
+      selector:
+        time: {}
+    time_scene_ambient_end:
+      name: Ambient time frame end (Optional)
+      description: Time from which on ambient scene will be not activated
+      default: 00:00:00
+      selector:
+        time: {}
 mode: restart
-
+max_exceeded: silent
+variables:
+  scene_ambient: !input scene_ambient
+  automation_blocker: !input automation_blocker
+  automation_blocker_boolean: !input automation_blocker_boolean
+  motion_off_blocker: !input motion_off_blocker
+  motion_off_blocker_boolean: !input motion_off_blocker_boolean
+  elevation: !input elevation
+  elevation_adjustment: !input elevation_adjustment
+  motion_entity: !input motion_entity
+  luminance_sensor: !input luminance_sensor
+  luminance_required: !input luminance_required
 trigger:
   - platform: state
-    entity_id: !input motion_sensor
+    entity_id: !input motion_entity
+    from: "off"
     to: "on"
-
-condition: []
-
+  - platform: state
+    entity_id: !input motion_entity
+    from: "on"
+    to: "off"
+    for: !input no_motion_wait
+condition:
+  - condition: or
+    conditions:
+      - "{{ automation_blocker == none }}"
+      - "{{ automation_blocker_boolean and states[automation_blocker].state == 'on'
+        }}"
+      - "{{ not automation_blocker_boolean and states[automation_blocker].state == 'off'
+        }}"
+  - condition: template
+    value_template: >
+      {% if 'Always' == elevation %}
+        true
+      {% else %}
+      {% set sun_elevation = state_attr('sun.sun', 'elevation') %}
+      {% if sun_elevation is none %}
+          false
+      {% else %}
+        {% 
+           if (sun_elevation > elevation_adjustment and 'Above horizon' == elevation) or
+              (sun_elevation <= elevation_adjustment and 'Below horizon' == elevation) %}
+          true
+        {% else %}
+          false
+        {% endif %}
+      {% endif %}
+      {% endif %}
 action:
   - choose:
       - conditions:
-          - condition: and
-            conditions:
-              - condition: template
-                value_template: "{{ is_true(enable_time_condition) }}"
-              - condition: time
-                after: !input start_time
-                before: !input end_time
+          - condition: template
+            value_template: "{{ trigger.to_state.state == 'on' }}"
+          - condition: numeric_state
+            entity_id: !input luminance_sensor
+            below: !input luminance_required
         sequence:
-          - service: homeassistant.turn_on
-            target:
-              entity_id: !input target_device
-          - repeat:
-              until:
-                - condition: state
-                  entity_id: !input motion_sensor
-                  state: "off"
-                  for:
-                    seconds: !input wait_time
-              sequence:
-                - delay: 5
-          - service: homeassistant.turn_off
-            target:
-              entity_id: !input target_device
-
+          - condition: time
+            after: !input time_default_start
+            before: !input time_default_end
+          - service: light.turn_on
+            target: !input light_target
       - conditions:
           - condition: template
-            value_template: "{{ not is_true(enable_time_condition) }}"
+            value_template: "{{ trigger.to_state.state == 'off' }}"
+          - condition: or
+            conditions:
+              - "{{ motion_off_blocker == none }}"
+              - "{{ motion_off_blocker_boolean and states[motion_off_blocker].state == 'on'
+                }}"
+              - "{{ not motion_off_blocker_boolean and states[motion_off_blocker].state == 'off'
+                }}"
         sequence:
-          - service: homeassistant.turn_on
-            target:
-              entity_id: !input target_device
-          - repeat:
-              until:
-                - condition: state
-                  entity_id: !input motion_sensor
-                  state: "off"
-                  for:
-                    seconds: !input wait_time
-              sequence:
-                - delay: 5
-          - service: homeassistant.turn_off
-            target:
-              entity_id: !input target_device  
+          - choose:
+              - conditions:
+                  - "{{ scene_ambient != 'scene.none' }}"
+                  - condition: time
+                    after: !input time_scene_ambient_start
+                    before: !input time_scene_ambient_end
+                sequence:
+                  - scene: !input scene_ambient
+            default:
+              - service: light.turn_off
+                target: !input light_target
