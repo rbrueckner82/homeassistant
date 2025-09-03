@@ -16,7 +16,6 @@ blueprint:
         target:
           entity:
             domain: light
-            domain: switch
     luminance_sensor:
       name: Illuminance sensor
       description: This sensor will be used to determine the illumination.
