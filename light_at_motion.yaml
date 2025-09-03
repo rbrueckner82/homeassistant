@@ -1,24 +1,26 @@
 blueprint:
-  name: Bewegungsmelder Licht Automation
+  name: Bewegungsmelder Licht/Switch Automation
   description: "Schaltet ein Licht oder einen Schalter basierend auf einem Bewegungsmelder ein und aus. Mit automatischer Verlängerung bei erneuter Bewegung und optionaler Zeitsteuerung."
   source_url: https://github.com/rbrueckner82/homeassistant/edit/main/light_at_motion.yaml
   domain: automation
   input:
     motion_entity:
       name: Motion Sensor
-      description: Motion Sensor or a group with Motion Sensors (But can be anything switching between "on" and "off")
+      description: Motion Sensor oder eine Gruppe (alles was zwischen on/off schaltet)
       selector:
         entity:
           multiple: true
     light_target:
-      name: Light
+      name: Light or Switch
       selector:
         target:
           entity:
-            domain: light
+            domain:
+              - light
+              - switch
     luminance_sensor:
       name: Illuminance sensor
-      description: This sensor will be used to determine the illumination.
+      description: Dieser Sensor wird zur Prüfung der Helligkeit verwendet.
       default:
       selector:
         entity:
@@ -27,7 +29,7 @@ blueprint:
           multiple: false
     luminance_required:
       name: Required Lux Level
-      description: Lux level below which the automation will run.
+      description: Lux-Level, unterhalb dessen die Automation aktiv wird.
       default: 100
       selector:
         number:
@@ -36,7 +38,7 @@ blueprint:
           unit_of_measurement: lx
     no_motion_wait:
       name: Wait time
-      description: Time to leave the light on after last motion is detected.
+      description: Zeit in Sekunden, bis nach der letzten Bewegung wieder ausgeschaltet wird.
       default: 120
       selector:
         number:
@@ -46,20 +48,18 @@ blueprint:
           mode: slider
           step: 1.0
     time_default_start:
-      name: Only run default action after this time (Optional)
-      description: Default Light target will only run when time is later than this time value.
+      name: Nur nach dieser Uhrzeit aktiv (Optional)
       default: 00:00:00
       selector:
         time: {}
     time_default_end:
-      name: Only run default action before this time (Optional)
-      description: Default Light target will only run when time is earlier than this time value.
+      name: Nur vor dieser Uhrzeit aktiv (Optional)
       default: 00:00:00
       selector:
         time: {}
     elevation:
       name: Elevation
-      description: Choose whether to check if the sun is above, below the horizon, or always trigger the action
+      description: Sonnenstand prüfen oder immer triggern
       default: Always
       selector:
         select:
@@ -69,7 +69,6 @@ blueprint:
             - Above horizon
     elevation_adjustment:
       name: Sun elevation adjustment (Optional)
-      description: With a postivie number, the sun is further above the horizon. For instance, +10 approximately means the trigger will activate one hour before the sun is below horizon. A negative number moves the trigger further below the horizon.
       default: 0
       selector:
         number:
@@ -80,35 +79,31 @@ blueprint:
           step: 1.0
     automation_blocker:
       name: Automation Blocker (Optional)
-      description: Only run if this boolean is in desired state (see next input)
+      description: Nur ausführen, wenn dieser Helper im gewünschten Zustand ist
       default:
       selector:
         entity: {}
     automation_blocker_boolean:
       name: Automation Blocker Chooser (Optional)
-      description:
-        Desired state of automation blocker, choose on for on and off for
-        off
+      description: Gewünschter Zustand des Blockers
       default: false
       selector:
         boolean: {}
     motion_off_blocker:
       name: Motion Off Blocker (Optional)
-      description:
-        Motion off sequence (trigger goes from ON to OFF) is not run if this boolean is in desired state
-        (see next input)
+      description: Ausschalt-Sequenz wird nicht ausgeführt, wenn dieser Helper im gewünschten Zustand ist
       default:
       selector:
         entity: {}
     motion_off_blocker_boolean:
       name: Motion Off Chooser (Optional)
-      description: Desired state of motion off blocker
+      description: Gewünschter Zustand des Motion-Off-Blockers
       default: false
       selector:
         boolean: {}
     scene_ambient:
       name: Ambient Scene (Optional)
-      description: Scene for ambient state. Will be activated when no motion is detected.
+      description: Szene für Ambient-Zustand (wird bei keiner Bewegung aktiviert)
       default: scene.none
       selector:
         entity:
@@ -116,14 +111,12 @@ blueprint:
             - scene
           multiple: false
     time_scene_ambient_start:
-      name: Ambient time frame start (Optional)
-      description: Time from which on ambient scene will be activated
+      name: Ambient Time Start (Optional)
       default: 00:00:00
       selector:
         time: {}
     time_scene_ambient_end:
-      name: Ambient time frame end (Optional)
-      description: Time from which on ambient scene will be not activated
+      name: Ambient Time End (Optional)
       default: 00:00:00
       selector:
         time: {}
@@ -154,10 +147,8 @@ condition:
   - condition: or
     conditions:
       - "{{ automation_blocker == none }}"
-      - "{{ automation_blocker_boolean and states[automation_blocker].state == 'on'
-        }}"
-      - "{{ not automation_blocker_boolean and states[automation_blocker].state == 'off'
-        }}"
+      - "{{ automation_blocker_boolean and states[automation_blocker].state == 'on' }}"
+      - "{{ not automation_blocker_boolean and states[automation_blocker].state == 'off' }}"
   - condition: template
     value_template: >
       {% if 'Always' == elevation %}
@@ -167,8 +158,7 @@ condition:
       {% if sun_elevation is none %}
           false
       {% else %}
-        {% 
-           if (sun_elevation > elevation_adjustment and 'Above horizon' == elevation) or
+        {% if (sun_elevation > elevation_adjustment and 'Above horizon' == elevation) or
               (sun_elevation <= elevation_adjustment and 'Below horizon' == elevation) %}
           true
         {% else %}
@@ -181,14 +171,17 @@ action:
       - conditions:
           - condition: template
             value_template: "{{ trigger.to_state.state == 'on' }}"
-          - condition: numeric_state
-            entity_id: !input luminance_sensor
-            below: !input luminance_required
+          - condition: or
+            conditions:
+              - "{{ luminance_sensor == none }}"
+              - condition: numeric_state
+                entity_id: !input luminance_sensor
+                below: !input luminance_required
         sequence:
           - condition: time
             after: !input time_default_start
             before: !input time_default_end
-          - service: light.turn_on
+          - service: homeassistant.turn_on
             target: !input light_target
       - conditions:
           - condition: template
@@ -196,10 +189,8 @@ action:
           - condition: or
             conditions:
               - "{{ motion_off_blocker == none }}"
-              - "{{ motion_off_blocker_boolean and states[motion_off_blocker].state == 'on'
-                }}"
-              - "{{ not motion_off_blocker_boolean and states[motion_off_blocker].state == 'off'
-                }}"
+              - "{{ motion_off_blocker_boolean and states[motion_off_blocker].state == 'on' }}"
+              - "{{ not motion_off_blocker_boolean and states[motion_off_blocker].state == 'off' }}"
         sequence:
           - choose:
               - conditions:
@@ -210,5 +201,5 @@ action:
                 sequence:
                   - scene: !input scene_ambient
             default:
-              - service: light.turn_off
+              - service: homeassistant.turn_off
                 target: !input light_target
