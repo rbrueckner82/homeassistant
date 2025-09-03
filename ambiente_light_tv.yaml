@@ -4,11 +4,12 @@ blueprint:
   source_url: https://github.com/rbrueckner82/homeassistant/edit/main/light_at_motion.yaml
   domain: automation
   input:
-    trigger_entity:
-      name: Auslöser-Entität
-      description: Entity, die die Aktion auslöst (z. B. Schalter oder Sensor).
+    harmony_activity:
+      name: Logitech Harmony Aktivität
+      description: Die Harmony Aktivität, die die Automation auslöst.
       selector:
-        entity: {}
+        entity:
+          domain: sensor
     light_target:
       name: Licht(er)
       description: Die Lichter, die eingeschaltet werden sollen.
@@ -19,7 +20,7 @@ blueprint:
 
 trigger:
   - platform: state
-    entity_id: !input trigger_entity
+    entity_id: !input harmony_activity
     to: "on"
 
 condition:
