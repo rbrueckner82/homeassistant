@@ -1,0 +1,32 @@
+blueprint:
+  name: Licht bei Aktion nach Sonnenuntergang
+  description: >
+    Schaltet ein Licht ein, wenn ein Auslöser aktiviert wird,
+    aber nur nach Sonnenuntergang.
+  domain: automation
+  input:
+    trigger_entity:
+      name: Auslöser-Entität
+      description: Entity, die die Aktion auslöst (z. B. Schalter oder Sensor).
+      selector:
+        entity: {}
+    light_target:
+      name: Licht(er)
+      description: Die Lichter, die eingeschaltet werden sollen.
+      selector:
+        target:
+          entity:
+            domain: light
+
+trigger:
+  - platform: state
+    entity_id: !input trigger_entity
+    to: "on"
+
+condition:
+  - condition: sun
+    after: sunset
+
+action:
+  - service: light.turn_on
+    target: !input light_target
