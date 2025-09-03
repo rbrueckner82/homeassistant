@@ -1,8 +1,7 @@
 blueprint:
-  name: Licht bei Aktion nach Sonnenuntergang
-  description: >
-    Schaltet ein Licht ein, wenn ein Auslöser aktiviert wird,
-    aber nur nach Sonnenuntergang.
+  name: Bewegungsmelder Licht/Switch Automation
+  description: "Schaltet ein Licht oder einen Schalter basierend auf einem Bewegungsmelder ein und aus. Mit automatischer Verlängerung bei erneuter Bewegung und optionaler Zeitsteuerung."
+  source_url: https://github.com/rbrueckner82/homeassistant/edit/main/light_at_motion.yaml
   domain: automation
   input:
     trigger_entity:
