@@ -1,5 +1,5 @@
 blueprint:
-  name: Bewegungsmelder Licht/Switch Automation
+  name: Schaltet Licht an wenn TV läuft und Sonnenuntergang ist
   description: "Schaltet ein Licht oder einen Schalter basierend auf einem Bewegungsmelder ein und aus. Mit automatischer Verlängerung bei erneuter Bewegung und optionaler Zeitsteuerung."
   source_url: https://github.com/rbrueckner82/homeassistant/edit/main/light_at_motion.yaml
   domain: automation
