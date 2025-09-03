@@ -6,10 +6,12 @@ blueprint:
   input:
     harmony_activity:
       name: Logitech Harmony Aktivität
-      description: Die Harmony Aktivität, die die Automation auslöst.
+      description: Wähle die Harmony Aktivität, die die Automation auslöst.
       selector:
         entity:
           domain: sensor
+          # optional filter: nur Harmony Aktivitäten
+          integration: harmony
     light_target:
       name: Licht(er)
       description: Die Lichter, die eingeschaltet werden sollen.
